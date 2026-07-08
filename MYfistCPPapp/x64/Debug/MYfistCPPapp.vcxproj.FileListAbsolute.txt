@@ -1,6 +1,0 @@
-C:\Users\cblak\Desktop\project\MYfistCPPapp\x64\Debug\WebView2Loader.dll
-C:\Users\cblak\Desktop\project\MYfistCPPapp\MYfistCPPapp\x64\Debug\MYfistCPPapp.vcxproj.AssemblyReference.cache
-C:\Users\cblak\Desktop\project\MYfistCPPapp\MYfistCPPapp\x64\Debug\MYfistCPPapp.MainForm.resources
-C:\Users\cblak\Desktop\project\MYfistCPPapp\MYfistCPPapp\x64\Debug\MYfistCPPapp.MyForm.resources
-C:\Users\cblak\Desktop\project\MYfistCPPapp\MYfistCPPapp\x64\Debug\MYfistCPPapp.vcxproj.GenerateResource.cache
-C:\Users\cblak\Desktop\project\MYfistCPPapp\MYfistCPPapp\WebView2Loader.dll
