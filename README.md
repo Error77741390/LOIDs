@@ -1,2 +1,2 @@
 Made by SimplyLOID
-just download folder and run the .exe
+Click on Code and at the bottm click Download ZIP then extract and open the .exe!
