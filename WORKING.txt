@@ -19274,7 +19274,7 @@ function runSongLoop() {
     // =========================================================================
 
     window.vars = {
-        // Keybinds (
+        // Keybinds
         keyAutoMills: "N",
         keyPlaceTrap: "F",
         keyPlaceSpike: "V",
@@ -19282,7 +19282,8 @@ function runSongLoop() {
         keyPathBreak: "Z",
         keyPlaceTurret: "H",
         test193: "Q",
-
+        keyToggleMenu: "INSERT",
+        keyQuickHeal: "SPACE",
 
         // Combat
         shameTick: false,
@@ -19291,19 +19292,39 @@ function runSongLoop() {
         autoShameLimit: 4,
         autoPlay: false,
         autoPush: true,
-
+        autoDodge: false,
+        dodgeThreshold: 80,
+        autoTarget: true,
+        targetLock: false,
+        comboMode: false,
+        rageMode: false,
+        
         // Defense
         safeSoldier: true,
         antiSmart: true,
-
+        autoShield: false,
+        trapDefense: false,
+        spikeWall: false,
+        turretGuard: false,
+        
         // Placers
         autoPlace: true,
         placeRange: 350,
         prePlace: true,
-
+        prePlace2: false,
+        smartPlacement: true,
+        angleOptimize: true,
+        fastPlace: true,
+        
         // Utilities
         autoBuy: true,
-
+        autoFarm: false,
+        farmRadius: 200,
+        autoHeal: true,
+        healThreshold: 60,
+        autoEat: true,
+        eatPriority: "health",
+        
         // Visuals
         millRotation: false,
         spikeRotation: false,
@@ -19312,10 +19333,17 @@ function runSongLoop() {
         xThreatRange: true,
         xPlacementPreview: true,
         xBreakGuide: true,
-
+        showHealthBars: true,
+        showNames: true,
+        showDistances: true,
+        minimapEnhanced: true,
+        fpsCounter: false,
+        
         // Settings
         theme: "",
-
+        menuOpacity: 95,
+        menuScale: 100,
+        
         // Misc
         usernameCycler: false,
         usernameList: "Luna1, Luna2, Luna3",
@@ -19324,6 +19352,12 @@ function runSongLoop() {
         chatMsg: "X- kill u",
         chatMsg2: "X- precision diff",
         delay: 1100,
+        autoJoinParty: false,
+        clanTag: "[X-]",
+        statsTracker: true,
+        soundEnabled: true,
+        notificationKill: true,
+        notificationDeath: true,
     };
 
     // --- LOAD SAVED SETTINGS ---
@@ -19362,7 +19396,9 @@ function runSongLoop() {
                 items: [
                     { type: 'keybind', name: "dynamic farm", id: "keyAutoGrind" },
                     { type: 'keybind', name: "cancel path", id: "keyPathBreak" },
-                    { type: 'keybind', name: "faster heal", id: "test193" }
+                    { type: 'keybind', name: "faster heal", id: "test193" },
+                    { type: 'keybind', name: "toggle menu", id: "keyToggleMenu" },
+                    { type: 'keybind', name: "quick heal", id: "keyQuickHeal" }
                 ]
             }
         ],
@@ -19380,16 +19416,26 @@ function runSongLoop() {
                 title: "X- Combat Assist",
                 items: [
                     { type: 'toggle', name: "smart movement", id: "autoPlay" },
-                    { type: 'toggle', name: "spike push", id: "autoPush" }
+                    { type: 'toggle', name: "spike push", id: "autoPush" },
+                    { type: 'toggle', name: "auto dodge", id: "autoDodge" },
+                    { type: 'slider', name: "dodge threshold", id: "dodgeThreshold", min: 20, max: 100 },
+                    { type: 'toggle', name: "auto target", id: "autoTarget" },
+                    { type: 'toggle', name: "target lock", id: "targetLock" },
+                    { type: 'toggle', name: "combo mode", id: "comboMode" },
+                    { type: 'toggle', name: "rage mode", id: "rageMode" }
                 ]
             }
         ],
-defense: [
+        defense: [
             {
                 title: "X- Defense Core",
                 items: [
                     { type: 'toggle', name: "safe soldier", id: "safeSoldier" },
-                    { type: 'toggle', name: "smart knockback anti", id: "antiSmart" }
+                    { type: 'toggle', name: "smart knockback anti", id: "antiSmart" },
+                    { type: 'toggle', name: "auto shield", id: "autoShield" },
+                    { type: 'toggle', name: "trap defense", id: "trapDefense" },
+                    { type: 'toggle', name: "spike wall", id: "spikeWall" },
+                    { type: 'toggle', name: "turret guard", id: "turretGuard" }
                 ]
             }
         ],
@@ -19398,7 +19444,10 @@ defense: [
                 title: "Default",
                 items: [
                     { type: 'toggle', name: "autoplace", id: "autoPlace" },
-                    { type: 'slider', name: "place range", id: "placeRange", min: 100, max: 500 }
+                    { type: 'slider', name: "place range", id: "placeRange", min: 100, max: 500 },
+                    { type: 'toggle', name: "smart placement", id: "smartPlacement" },
+                    { type: 'toggle', name: "angle optimize", id: "angleOptimize" },
+                    { type: 'toggle', name: "fast place", id: "fastPlace" }
                 ]
             },
             {
@@ -19414,6 +19463,12 @@ defense: [
                 title: "ACTIONS",
                 items: [
                     { type: 'toggle', name: "autobuy", id: "autoBuy" },
+                    { type: 'toggle', name: "autofarm", id: "autoFarm" },
+                    { type: 'slider', name: "farm radius", id: "farmRadius", min: 50, max: 500 },
+                    { type: 'toggle', name: "autoheal", id: "autoHeal" },
+                    { type: 'slider', name: "heal threshold", id: "healThreshold", min: 20, max: 100 },
+                    { type: 'toggle', name: "autoeat", id: "autoEat" },
+                    { type: 'select', name: "eat priority", id: "eatPriority", options: ["health", "food", "water"] }
                 ]
             }
         ],
@@ -19431,7 +19486,18 @@ defense: [
                 title: "Username Cycler",
                 items: [
                     { type: 'toggle', name: "cycle Usernames", id: "usernameCycler" },
-                    { type: 'input', name: "usernames (comma sep)", id: "usernameList" }
+                    { type: 'input', name: "usernames (comma sep)", id: "usernameList" },
+                    { type: 'toggle', name: "auto join party", id: "autoJoinParty" },
+                    { type: 'input', name: "clan tag", id: "clanTag" }
+                ]
+            },
+            {
+                title: "Notifications",
+                items: [
+                    { type: 'toggle', name: "stats tracker", id: "statsTracker" },
+                    { type: 'toggle', name: "sound enabled", id: "soundEnabled" },
+                    { type: 'toggle', name: "kill notification", id: "notificationKill" },
+                    { type: 'toggle', name: "death notification", id: "notificationDeath" }
                 ]
             }
         ],
@@ -19444,7 +19510,12 @@ defense: [
                     { type: 'toggle', name: "target line", id: "xTargetLine" },
                     { type: 'toggle', name: "enemy threat range", id: "xThreatRange" },
                     { type: 'toggle', name: "placement ghosts", id: "xPlacementPreview" },
-                    { type: 'toggle', name: "autobreak guide", id: "xBreakGuide" }
+                    { type: 'toggle', name: "autobreak guide", id: "xBreakGuide" },
+                    { type: 'toggle', name: "show health bars", id: "showHealthBars" },
+                    { type: 'toggle', name: "show names", id: "showNames" },
+                    { type: 'toggle', name: "show distances", id: "showDistances" },
+                    { type: 'toggle', name: "enhanced minimap", id: "minimapEnhanced" },
+                    { type: 'toggle', name: "fps counter", id: "fpsCounter" }
                 ]
             },
             {
@@ -19460,6 +19531,13 @@ defense: [
                 title: "Themes",
                 items: [
                     { type: 'theme_select', id: "theme" }
+                ]
+            },
+            {
+                title: "Menu Settings",
+                items: [
+                    { type: 'slider', name: "menu opacity", id: "menuOpacity", min: 50, max: 100 },
+                    { type: 'slider', name: "menu scale", id: "menuScale", min: 75, max: 125 }
                 ]
             }
         ]
@@ -19978,6 +20056,36 @@ defense: [
                     row.appendChild(btn);
                     itemsContainer.appendChild(row);
                 }
+                // SELECT DROPDOWN
+                else if (item.type === 'select') {
+                    const row = document.createElement('div');
+                    row.className = 'feature-row stacked';
+                    row.innerHTML = `<span class="feat-label">${item.name}</span>`;
+
+                    const wrap = document.createElement('div');
+                    wrap.className = 'input-wrapper';
+
+                    const select = document.createElement('select');
+                    select.className = 'text-input-styled';
+                    select.style.cursor = 'pointer';
+
+                    item.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.innerText = opt.charAt(0).toUpperCase() + opt.slice(1);
+                        if (window.vars[item.id] === opt) option.selected = true;
+                        select.appendChild(option);
+                    });
+
+                    select.onchange = (e) => {
+                        window.vars[item.id] = e.target.value;
+                        saveConfig();
+                    };
+
+                    wrap.appendChild(select);
+                    row.appendChild(wrap);
+                    itemsContainer.appendChild(row);
+                }
                 // THEME SELECT
                 else if (item.type === 'theme_select') {
                     const themes = [
@@ -20131,11 +20239,15 @@ document.addEventListener('click', handleSpawn, true);
         const preState = v.prePlace ? 'ON' : 'OFF';
         const defenseState = v.antiSmart ? 'SMART' : 'BASE';
         const killState = v.killChat ? 'ON' : 'OFF';
+        const farmState = v.autoFarm ? 'ON' : 'OFF';
+        const healState = v.autoHeal ? 'ON' : 'OFF';
+        const dodgeState = v.autoDodge ? 'ON' : 'OFF';
         const pingText = actualPing ? `${Math.round(actualPing)}ms` : '--ms';
 
         xBox.innerHTML = `<span class="x-title">X- PRECISION</span>  ${pingText}
-PLACE ${placeState}  PRE ${preState}
-DEF ${defenseState}  KILLCHAT ${killState}`;
+PLACE ${placeState}  PRE ${preState}  FARM ${farmState}
+DEF ${defenseState}  DODGE ${dodgeState}
+HEAL ${healState}  KILLCHAT ${killState}`;
     }, 250);
 })();
 })();
