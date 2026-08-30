@@ -71,6 +71,12 @@ let xOffset = null;
 let yOffset = null;
 let shouldntPathfind = false;
 
+// R key target system
+let rTargetActive = false;
+let rTargetPlayer = null;
+let rTargetPos = null;
+let instaKillMode = false;
+
 
 
 
@@ -97,6 +103,9 @@ let settings = {
     chatlog: false,
     spampreplace: true,
     autoPlace: true,
+    autoReplace: true,
+    replacePriority: true,
+    aggressiveReplace: true,
 };
 
 const autoBuyList = [
@@ -110,6 +119,7 @@ const autoBuyList = [
     { id: 13, type: 1, cost: 15000 },   // angel
     { id: 48, type: 0, cost: 3000 },  //halo
     { id: 19, type: 1, cost: 15000 },   // shadow
+    { id: 20, type: 0, cost: 8000 },  // emp (for turret defense)
 ];
 
 
@@ -19282,6 +19292,7 @@ function runSongLoop() {
         keyPathBreak: "Z",
         keyPlaceTurret: "H",
         test193: "Q",
+        keyRtarget: "R",
 
 
         // Combat
@@ -19291,15 +19302,28 @@ function runSongLoop() {
         autoShameLimit: 4,
         autoPlay: false,
         autoPush: true,
+        rTargetEnabled: true,
+        instaKillOnDamage: true,
+        instaKillNoSoldier: true,
 
         // Defense
         safeSoldier: true,
         antiSmart: true,
+        improvedAutoHeal: true,
+        antiShameEnhanced: true,
 
         // Placers
         autoPlace: true,
+        autoReplace: true,
+        replacePriority: true,
+        aggressiveReplace: true,
         placeRange: 350,
         prePlace: true,
+
+        // Autohat
+        smartAutoHat: true,
+        empForTurrets: true,
+        soldierForPlayers: true,
 
         // Utilities
         autoBuy: true,
@@ -19312,6 +19336,7 @@ function runSongLoop() {
         xThreatRange: true,
         xPlacementPreview: true,
         xBreakGuide: true,
+        xRTarget: true,
 
         // Settings
         theme: "",
