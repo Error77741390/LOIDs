@@ -10323,9 +10323,9 @@ if (tmpObj.isPlayer && tmpObj.alive) {
             // RENDER GAME OBJECTS:
             var gameObjectSprites = {};
             function getResSprite(obj) {
-                var biomeID = (obj.y >= config.mapScale - config.snowBiomeTop) ? 2 : ((obj.y <= config.snowBiomeTop) ? 1 : 0);
-                var tmpIndex = (obj.type + "_" + obj.scale + "_" + biomeID);
-                var tmpSprite = gameObjectSprites[tmpIndex];
+                // Clear cache each frame to prevent static overlay artifacts
+                var tmpIndex = (obj.type + "_" + obj.scale + "_" + ((obj.y >= config.mapScale - config.snowBiomeTop) ? 2 : ((obj.y <= config.snowBiomeTop) ? 1 : 0)));
+                var tmpSprite = null; // Don't use cache - render fresh each time
                 if (!tmpSprite) {
                     var tmpCanvas = document.createElement('canvas');
                     tmpCanvas.width = tmpCanvas.height = (obj.scale * 2.1) + outlineWidth;
@@ -10337,7 +10337,7 @@ if (tmpObj.isPlayer && tmpObj.alive) {
                     let colors = [
                         ["#b1d959", "#95b946"],
                         ["#bade6e", "#aac76b"],
-                        ["#a7d544", "#86a63f"],
+                        ["#a7d944", "#86a63f"],
                         ["#b4db62", "#9ebf57"]
                     ]
                     let select = colors[Math.floor(Math.random() * colors.length)];
@@ -10386,7 +10386,6 @@ if (tmpObj.isPlayer && tmpObj.alive) {
                         tmpContext.fill();
                     }
                     tmpSprite = tmpCanvas;
-                    gameObjectSprites[tmpIndex] = tmpSprite;
                 }
                 return tmpSprite;
             }
