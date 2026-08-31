@@ -67,6 +67,8 @@ let filteredObjectsCache = {
     withSpikes: null,
     withoutSpikes: null,
 };
+let xOffset = null;
+let yOffset = null;
 let shouldntPathfind = false;
 
 
@@ -95,26 +97,6 @@ let settings = {
     chatlog: false,
     spampreplace: true,
     autoPlace: true,
-    
-    // NEW PERFORMANCE SETTINGS
-    uncapFPS: false,
-    showFPS: false,
-    lowPacketMode: false,
-    
-    // NEW COMBAT SETTINGS
-    instaKey: 'r',
-    instaEnabled: false,
-    instaThreshold: 35,
-    
-    // NEW MOVEMENT SETTINGS
-    smartMovement: true,
-    spikeAvoidance: true,
-    playerAvoidance: true,
-    avoidDistance: 150,
-    
-    // NEW PLACER SETTINGS
-    angleOptimize: true,
-    anglePrecision: 2.5,
 };
 
 const autoBuyList = [
@@ -135,19 +117,6 @@ const autoBuyList = [
 let packets = 0;
 let packetInterval;
 let pps = 0;
-
-// NEW GLOBAL VARIABLES FOR ENHANCED FEATURES
-let fpsStartTime = performance.now();
-let fpsFrameCount = 0;
-let currentFPS = 0;
-let lastFPSUpdate = 0;
-let instaTarget = null;
-let instaTargetPos = null;
-let nearbyEnemies = [];
-let spikePositions = [];
-let playerPositions = [];
-let packetQueue = [];
-let lastPacketTime = 0;
 
 
 
@@ -9178,64 +9147,6 @@ let lastPacketTime = 0;
             var lastMoveDir = undefined;
             function sendMoveDir() {
                 var newMoveDir = getMoveDir();
-                
-                // SMART MOVEMENT: Avoid spikes and players
-                if (settings.smartMovement && myPlayer) {
-                    let avoidAngle = null;
-                    let avoidanceStrength = 0;
-                    
-                    // Avoid spikes
-                    if (settings.spikeAvoidance && spikePositions.length > 0) {
-                        spikePositions.forEach(spike => {
-                            let dist = UTILS.getDistance(myPlayer.x, myPlayer.y, spike.x, spike.y);
-                            if (dist < settings.avoidDistance) {
-                                let spikeAngle = UTILS.getDirection(myPlayer.x, myPlayer.y, spike.x, spike.y);
-                                let awayAngle = spikeAngle + Math.PI;
-                                if (!avoidAngle) {
-                                    avoidAngle = awayAngle;
-                                    avoidanceStrength = (settings.avoidDistance - dist) / settings.avoidDistance;
-                                } else {
-                                    // Blend avoidance angles
-                                    avoidAngle = Math.lerpAngle(avoidAngle, awayAngle, 0.5);
-                                    avoidanceStrength = Math.max(avoidanceStrength, (settings.avoidDistance - dist) / settings.avoidDistance);
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Avoid enemy players
-                    if (settings.playerAvoidance && nearbyEnemies.length > 0) {
-                        nearbyEnemies.forEach(enemy => {
-                            if (enemy.distance < settings.avoidDistance) {
-                                let enemyAngle = UTILS.getDirection(myPlayer.x, myPlayer.y, enemy.player.x, enemy.player.y);
-                                let awayAngle = enemyAngle + Math.PI;
-                                if (!avoidAngle) {
-                                    avoidAngle = awayAngle;
-                                    avoidanceStrength = (settings.avoidDistance - enemy.distance) / settings.avoidDistance;
-                                } else {
-                                    avoidAngle = Math.lerpAngle(avoidAngle, awayAngle, 0.5);
-                                    avoidanceStrength = Math.max(avoidanceStrength, (settings.avoidDistance - enemy.distance) / settings.avoidDistance);
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Apply avoidance to movement direction
-                    if (avoidAngle && avoidanceStrength > 0.1) {
-                        newMoveDir = Math.lerpAngle(newMoveDir, avoidAngle, avoidanceStrength * 0.7);
-                    }
-                }
-                
-                // LOW PACKET MODE for movement
-                if (settings.lowPacketMode) {
-                    let currentTime = Date.now();
-                    if (currentTime - lastPacketTime < 50) {
-                        packetQueue.push({type: 'move', dir: newMoveDir});
-                        return;
-                    }
-                    lastPacketTime = currentTime;
-                }
-                
                 if (lastMoveDir == undefined || newMoveDir == undefined || Math.abs(newMoveDir - lastMoveDir) > 0.3) {
                     io.send("9", newMoveDir);
                     lastMoveDir = newMoveDir;
@@ -9259,32 +9170,6 @@ function sendLockDir() {
                 io.send("z", index, true);
             }
             function sendAtck(id, angle) {
-                // LOW PACKET MODE: Queue packets instead of sending immediately
-                if (settings.lowPacketMode) {
-                    let currentTime = Date.now();
-                    if (currentTime - lastPacketTime < 50) {
-                        packetQueue.push({type: 'attack', id: id, angle: angle});
-                        return;
-                    }
-                    lastPacketTime = currentTime;
-                }
-                
-                // INSTA KILL LOGIC: Check if target is vulnerable
-                if (settings.instaEnabled && instaTarget) {
-                    let targetHealth = instaTarget.health || 100;
-                    let damageDealt = 0;
-                    
-                    // Insta condition: low health OR high shame OR taking damage
-                    if (targetHealth <= settings.instaThreshold || 
-                        (instaTarget.shame && instaTarget.shame > 80)) {
-                        // Send rapid attacks for insta kill
-                        io.send("F", id, angle);
-                        setTimeout(() => io.send("F", id, angle + 0.1), 30);
-                        setTimeout(() => io.send("F", id, angle - 0.1), 60);
-                        return;
-                    }
-                }
-                
                 io.send("F", id, angle);
             }
 
@@ -9504,40 +9389,6 @@ function sendLockDir() {
             // UPDATE GAME:
             function updateGame() {
                 if (true) {
-                    
-                    // NEW: INSTA TARGET LOGIC & SMART MOVEMENT
-                    if (myPlayer && settings.instaEnabled) {
-                        // Find nearby enemies for insta target
-                        nearbyEnemies = [];
-                        players.forEach(p => {
-                            if (p.sid !== myPlayer.sid && p.alive) {
-                                let dist = UTILS.getDistance(myPlayer.x, myPlayer.y, p.x, p.y);
-                                if (dist < 400) {
-                                    nearbyEnemies.push({player: p, distance: dist});
-                                }
-                            }
-                        });
-                        
-                        // Sort by distance and select closest as insta target
-                        nearbyEnemies.sort((a, b) => a.distance - b.distance);
-                        if (nearbyEnemies.length > 0) {
-                            instaTarget = nearbyEnemies[0].player;
-                            instaTargetPos = {x: instaTarget.x, y: instaTarget.y};
-                        } else {
-                            instaTarget = null;
-                            instaTargetPos = null;
-                        }
-                        
-                        // Collect spike positions for avoidance
-                        if (settings.spikeAvoidance) {
-                            spikePositions = [];
-                            objects.forEach(obj => {
-                                if (obj.type === 'spike' || obj.id === 10 || obj.id === 11) {
-                                    spikePositions.push({x: obj.x, y: obj.y});
-                                }
-                            });
-                        }
-                    }
 
                     // UPDATE DIRECTION:
                     /*
@@ -9604,8 +9455,8 @@ function sendLockDir() {
                     }
 
                     // RENDER CORDS:
-                    let xOffset = camX - (maxScreenWidth / 2);
-                    let yOffset = camY - (maxScreenHeight / 2);
+                    xOffset = camX - (maxScreenWidth / 2);
+                    yOffset = camY - (maxScreenHeight / 2);
 
                     // RENDER BACKGROUND:
                     if (config.snowBiomeTop - yOffset <= 0 && config.mapScale - config.snowBiomeTop - yOffset >= maxScreenHeight) {
@@ -10113,8 +9964,7 @@ if (tmpObj.isPlayer && tmpObj.alive) {
                 }
 
                 // Draw once on the main player layer to avoid duplicate overlays.
-                // X- Precision visuals disabled to fix stationary overlay issue
-                // if (zIndex === 0) renderXPrecisionVisuals(xOffset, yOffset);
+                if (zIndex === 0) renderXPrecisionVisuals(xOffset, yOffset);
             }
 
             // X- PRECISION VISUALS:
@@ -10322,9 +10172,9 @@ if (tmpObj.isPlayer && tmpObj.alive) {
             // RENDER GAME OBJECTS:
             var gameObjectSprites = {};
             function getResSprite(obj) {
-                // Clear cache each frame to prevent static overlay artifacts
-                var tmpIndex = (obj.type + "_" + obj.scale + "_" + ((obj.y >= config.mapScale - config.snowBiomeTop) ? 2 : ((obj.y <= config.snowBiomeTop) ? 1 : 0)));
-                var tmpSprite = null; // Don't use cache - render fresh each time
+                var biomeID = (obj.y >= config.mapScale - config.snowBiomeTop) ? 2 : ((obj.y <= config.snowBiomeTop) ? 1 : 0);
+                var tmpIndex = (obj.type + "_" + obj.scale + "_" + biomeID);
+                var tmpSprite = gameObjectSprites[tmpIndex];
                 if (!tmpSprite) {
                     var tmpCanvas = document.createElement('canvas');
                     tmpCanvas.width = tmpCanvas.height = (obj.scale * 2.1) + outlineWidth;
@@ -10336,7 +10186,7 @@ if (tmpObj.isPlayer && tmpObj.alive) {
                     let colors = [
                         ["#b1d959", "#95b946"],
                         ["#bade6e", "#aac76b"],
-                        ["#a7d944", "#86a63f"],
+                        ["#a7d544", "#86a63f"],
                         ["#b4db62", "#9ebf57"]
                     ]
                     let select = colors[Math.floor(Math.random() * colors.length)];
@@ -10385,6 +10235,7 @@ if (tmpObj.isPlayer && tmpObj.alive) {
                         tmpContext.fill();
                     }
                     tmpSprite = tmpCanvas;
+                    gameObjectSprites[tmpIndex] = tmpSprite;
                 }
                 return tmpSprite;
             }
@@ -15399,26 +15250,8 @@ function runSongLoop() {
                 now = Date.now();
                 delta = now - lastUpdate;
                 lastUpdate = now;
-                
-                // FPS COUNTER LOGIC
-                if (settings.showFPS || settings.uncapFPS) {
-                    fpsFrameCount++;
-                    if (now - lastFPSUpdate >= 1000) {
-                        currentFPS = fpsFrameCount;
-                        fpsFrameCount = 0;
-                        lastFPSUpdate = now;
-                    }
-                }
-                
                 updateGame();
-                
-                // UNCAPPED FPS MODE
-                if (settings.uncapFPS) {
-                    requestAnimationFrame(doUpdate);
-                } else {
-                    // Standard 60 FPS cap fallback
-                    setTimeout(() => requestAnimationFrame(doUpdate), 16.67);
-                }
+                requestAnimationFrame(doUpdate);
             }
 
             // START GAME:
@@ -19495,11 +19328,11 @@ function runSongLoop() {
         // Visuals
         millRotation: false,
         spikeRotation: false,
-        xCombatVisuals: false,
-        xTargetLine: false,
-        xThreatRange: false,
-        xPlacementPreview: false,
-        xBreakGuide: false,
+        xCombatVisuals: true,
+        xTargetLine: true,
+        xThreatRange: true,
+        xPlacementPreview: true,
+        xBreakGuide: true,
         showHealthBars: true,
         showNames: true,
         showDistances: true,
@@ -19673,6 +19506,11 @@ function runSongLoop() {
             {
                 title: "X- Precision HUD",
                 items: [
+                    { type: 'toggle', name: "combat overlays", id: "xCombatVisuals" },
+                    { type: 'toggle', name: "target line", id: "xTargetLine" },
+                    { type: 'toggle', name: "enemy threat range", id: "xThreatRange" },
+                    { type: 'toggle', name: "placement ghosts", id: "xPlacementPreview" },
+                    { type: 'toggle', name: "autobreak guide", id: "xBreakGuide" },
                     { type: 'toggle', name: "show health bars", id: "showHealthBars" },
                     { type: 'toggle', name: "show names", id: "showNames" },
                     { type: 'toggle', name: "show distances", id: "showDistances" },
