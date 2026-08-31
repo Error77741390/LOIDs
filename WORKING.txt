@@ -97,6 +97,26 @@ let settings = {
     chatlog: false,
     spampreplace: true,
     autoPlace: true,
+    
+    // NEW PERFORMANCE SETTINGS
+    uncapFPS: false,
+    showFPS: false,
+    lowPacketMode: false,
+    
+    // NEW COMBAT SETTINGS
+    instaKey: 'r',
+    instaEnabled: false,
+    instaThreshold: 35,
+    
+    // NEW MOVEMENT SETTINGS
+    smartMovement: true,
+    spikeAvoidance: true,
+    playerAvoidance: true,
+    avoidDistance: 150,
+    
+    // NEW PLACER SETTINGS
+    angleOptimize: true,
+    anglePrecision: 2.5,
 };
 
 const autoBuyList = [
@@ -117,6 +137,19 @@ const autoBuyList = [
 let packets = 0;
 let packetInterval;
 let pps = 0;
+
+// NEW GLOBAL VARIABLES FOR ENHANCED FEATURES
+let fpsStartTime = performance.now();
+let fpsFrameCount = 0;
+let currentFPS = 0;
+let lastFPSUpdate = 0;
+let instaTarget = null;
+let instaTargetPos = null;
+let nearbyEnemies = [];
+let spikePositions = [];
+let playerPositions = [];
+let packetQueue = [];
+let lastPacketTime = 0;
 
 
 
@@ -9147,6 +9180,64 @@ let pps = 0;
             var lastMoveDir = undefined;
             function sendMoveDir() {
                 var newMoveDir = getMoveDir();
+                
+                // SMART MOVEMENT: Avoid spikes and players
+                if (settings.smartMovement && myPlayer) {
+                    let avoidAngle = null;
+                    let avoidanceStrength = 0;
+                    
+                    // Avoid spikes
+                    if (settings.spikeAvoidance && spikePositions.length > 0) {
+                        spikePositions.forEach(spike => {
+                            let dist = UTILS.getDistance(myPlayer.x, myPlayer.y, spike.x, spike.y);
+                            if (dist < settings.avoidDistance) {
+                                let spikeAngle = UTILS.getDirection(myPlayer.x, myPlayer.y, spike.x, spike.y);
+                                let awayAngle = spikeAngle + Math.PI;
+                                if (!avoidAngle) {
+                                    avoidAngle = awayAngle;
+                                    avoidanceStrength = (settings.avoidDistance - dist) / settings.avoidDistance;
+                                } else {
+                                    // Blend avoidance angles
+                                    avoidAngle = Math.lerpAngle(avoidAngle, awayAngle, 0.5);
+                                    avoidanceStrength = Math.max(avoidanceStrength, (settings.avoidDistance - dist) / settings.avoidDistance);
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Avoid enemy players
+                    if (settings.playerAvoidance && nearbyEnemies.length > 0) {
+                        nearbyEnemies.forEach(enemy => {
+                            if (enemy.distance < settings.avoidDistance) {
+                                let enemyAngle = UTILS.getDirection(myPlayer.x, myPlayer.y, enemy.player.x, enemy.player.y);
+                                let awayAngle = enemyAngle + Math.PI;
+                                if (!avoidAngle) {
+                                    avoidAngle = awayAngle;
+                                    avoidanceStrength = (settings.avoidDistance - enemy.distance) / settings.avoidDistance;
+                                } else {
+                                    avoidAngle = Math.lerpAngle(avoidAngle, awayAngle, 0.5);
+                                    avoidanceStrength = Math.max(avoidanceStrength, (settings.avoidDistance - enemy.distance) / settings.avoidDistance);
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Apply avoidance to movement direction
+                    if (avoidAngle && avoidanceStrength > 0.1) {
+                        newMoveDir = Math.lerpAngle(newMoveDir, avoidAngle, avoidanceStrength * 0.7);
+                    }
+                }
+                
+                // LOW PACKET MODE for movement
+                if (settings.lowPacketMode) {
+                    let currentTime = Date.now();
+                    if (currentTime - lastPacketTime < 50) {
+                        packetQueue.push({type: 'move', dir: newMoveDir});
+                        return;
+                    }
+                    lastPacketTime = currentTime;
+                }
+                
                 if (lastMoveDir == undefined || newMoveDir == undefined || Math.abs(newMoveDir - lastMoveDir) > 0.3) {
                     io.send("9", newMoveDir);
                     lastMoveDir = newMoveDir;
@@ -9170,6 +9261,32 @@ function sendLockDir() {
                 io.send("z", index, true);
             }
             function sendAtck(id, angle) {
+                // LOW PACKET MODE: Queue packets instead of sending immediately
+                if (settings.lowPacketMode) {
+                    let currentTime = Date.now();
+                    if (currentTime - lastPacketTime < 50) {
+                        packetQueue.push({type: 'attack', id: id, angle: angle});
+                        return;
+                    }
+                    lastPacketTime = currentTime;
+                }
+                
+                // INSTA KILL LOGIC: Check if target is vulnerable
+                if (settings.instaEnabled && instaTarget) {
+                    let targetHealth = instaTarget.health || 100;
+                    let damageDealt = 0;
+                    
+                    // Insta condition: low health OR high shame OR taking damage
+                    if (targetHealth <= settings.instaThreshold || 
+                        (instaTarget.shame && instaTarget.shame > 80)) {
+                        // Send rapid attacks for insta kill
+                        io.send("F", id, angle);
+                        setTimeout(() => io.send("F", id, angle + 0.1), 30);
+                        setTimeout(() => io.send("F", id, angle - 0.1), 60);
+                        return;
+                    }
+                }
+                
                 io.send("F", id, angle);
             }
 
@@ -9389,6 +9506,40 @@ function sendLockDir() {
             // UPDATE GAME:
             function updateGame() {
                 if (true) {
+                    
+                    // NEW: INSTA TARGET LOGIC & SMART MOVEMENT
+                    if (myPlayer && settings.instaEnabled) {
+                        // Find nearby enemies for insta target
+                        nearbyEnemies = [];
+                        players.forEach(p => {
+                            if (p.sid !== myPlayer.sid && p.alive) {
+                                let dist = UTILS.getDistance(myPlayer.x, myPlayer.y, p.x, p.y);
+                                if (dist < 400) {
+                                    nearbyEnemies.push({player: p, distance: dist});
+                                }
+                            }
+                        });
+                        
+                        // Sort by distance and select closest as insta target
+                        nearbyEnemies.sort((a, b) => a.distance - b.distance);
+                        if (nearbyEnemies.length > 0) {
+                            instaTarget = nearbyEnemies[0].player;
+                            instaTargetPos = {x: instaTarget.x, y: instaTarget.y};
+                        } else {
+                            instaTarget = null;
+                            instaTargetPos = null;
+                        }
+                        
+                        // Collect spike positions for avoidance
+                        if (settings.spikeAvoidance) {
+                            spikePositions = [];
+                            objects.forEach(obj => {
+                                if (obj.type === 'spike' || obj.id === 10 || obj.id === 11) {
+                                    spikePositions.push({x: obj.x, y: obj.y});
+                                }
+                            });
+                        }
+                    }
 
                     // UPDATE DIRECTION:
                     /*
@@ -15250,8 +15401,26 @@ function runSongLoop() {
                 now = Date.now();
                 delta = now - lastUpdate;
                 lastUpdate = now;
+                
+                // FPS COUNTER LOGIC
+                if (settings.showFPS || settings.uncapFPS) {
+                    fpsFrameCount++;
+                    if (now - lastFPSUpdate >= 1000) {
+                        currentFPS = fpsFrameCount;
+                        fpsFrameCount = 0;
+                        lastFPSUpdate = now;
+                    }
+                }
+                
                 updateGame();
-                requestAnimationFrame(doUpdate);
+                
+                // UNCAPPED FPS MODE
+                if (settings.uncapFPS) {
+                    requestAnimationFrame(doUpdate);
+                } else {
+                    // Standard 60 FPS cap fallback
+                    setTimeout(() => requestAnimationFrame(doUpdate), 16.67);
+                }
             }
 
             // START GAME:
@@ -19274,7 +19443,7 @@ function runSongLoop() {
     // =========================================================================
 
     window.vars = {
-        // Keybinds (
+        // Keybinds
         keyAutoMills: "N",
         keyPlaceTrap: "F",
         keyPlaceSpike: "V",
@@ -19282,7 +19451,8 @@ function runSongLoop() {
         keyPathBreak: "Z",
         keyPlaceTurret: "H",
         test193: "Q",
-
+        keyToggleMenu: "INSERT",
+        keyQuickHeal: "SPACE",
 
         // Combat
         shameTick: false,
@@ -19291,19 +19461,39 @@ function runSongLoop() {
         autoShameLimit: 4,
         autoPlay: false,
         autoPush: true,
-
+        autoDodge: false,
+        dodgeThreshold: 80,
+        autoTarget: true,
+        targetLock: false,
+        comboMode: false,
+        rageMode: false,
+        
         // Defense
         safeSoldier: true,
         antiSmart: true,
-
+        autoShield: false,
+        trapDefense: false,
+        spikeWall: false,
+        turretGuard: false,
+        
         // Placers
         autoPlace: true,
         placeRange: 350,
         prePlace: true,
-
+        prePlace2: false,
+        smartPlacement: true,
+        angleOptimize: true,
+        fastPlace: true,
+        
         // Utilities
         autoBuy: true,
-
+        autoFarm: false,
+        farmRadius: 200,
+        autoHeal: true,
+        healThreshold: 60,
+        autoEat: true,
+        eatPriority: "health",
+        
         // Visuals
         millRotation: false,
         spikeRotation: false,
@@ -19312,10 +19502,17 @@ function runSongLoop() {
         xThreatRange: true,
         xPlacementPreview: true,
         xBreakGuide: true,
-
+        showHealthBars: true,
+        showNames: true,
+        showDistances: true,
+        minimapEnhanced: true,
+        fpsCounter: false,
+        
         // Settings
         theme: "",
-
+        menuOpacity: 95,
+        menuScale: 100,
+        
         // Misc
         usernameCycler: false,
         usernameList: "Luna1, Luna2, Luna3",
@@ -19324,6 +19521,12 @@ function runSongLoop() {
         chatMsg: "X- kill u",
         chatMsg2: "X- precision diff",
         delay: 1100,
+        autoJoinParty: false,
+        clanTag: "[X-]",
+        statsTracker: true,
+        soundEnabled: true,
+        notificationKill: true,
+        notificationDeath: true,
     };
 
     // --- LOAD SAVED SETTINGS ---
@@ -19362,7 +19565,9 @@ function runSongLoop() {
                 items: [
                     { type: 'keybind', name: "dynamic farm", id: "keyAutoGrind" },
                     { type: 'keybind', name: "cancel path", id: "keyPathBreak" },
-                    { type: 'keybind', name: "faster heal", id: "test193" }
+                    { type: 'keybind', name: "faster heal", id: "test193" },
+                    { type: 'keybind', name: "toggle menu", id: "keyToggleMenu" },
+                    { type: 'keybind', name: "quick heal", id: "keyQuickHeal" }
                 ]
             }
         ],
@@ -19380,16 +19585,26 @@ function runSongLoop() {
                 title: "X- Combat Assist",
                 items: [
                     { type: 'toggle', name: "smart movement", id: "autoPlay" },
-                    { type: 'toggle', name: "spike push", id: "autoPush" }
+                    { type: 'toggle', name: "spike push", id: "autoPush" },
+                    { type: 'toggle', name: "auto dodge", id: "autoDodge" },
+                    { type: 'slider', name: "dodge threshold", id: "dodgeThreshold", min: 20, max: 100 },
+                    { type: 'toggle', name: "auto target", id: "autoTarget" },
+                    { type: 'toggle', name: "target lock", id: "targetLock" },
+                    { type: 'toggle', name: "combo mode", id: "comboMode" },
+                    { type: 'toggle', name: "rage mode", id: "rageMode" }
                 ]
             }
         ],
-defense: [
+        defense: [
             {
                 title: "X- Defense Core",
                 items: [
                     { type: 'toggle', name: "safe soldier", id: "safeSoldier" },
-                    { type: 'toggle', name: "smart knockback anti", id: "antiSmart" }
+                    { type: 'toggle', name: "smart knockback anti", id: "antiSmart" },
+                    { type: 'toggle', name: "auto shield", id: "autoShield" },
+                    { type: 'toggle', name: "trap defense", id: "trapDefense" },
+                    { type: 'toggle', name: "spike wall", id: "spikeWall" },
+                    { type: 'toggle', name: "turret guard", id: "turretGuard" }
                 ]
             }
         ],
@@ -19398,7 +19613,10 @@ defense: [
                 title: "Default",
                 items: [
                     { type: 'toggle', name: "autoplace", id: "autoPlace" },
-                    { type: 'slider', name: "place range", id: "placeRange", min: 100, max: 500 }
+                    { type: 'slider', name: "place range", id: "placeRange", min: 100, max: 500 },
+                    { type: 'toggle', name: "smart placement", id: "smartPlacement" },
+                    { type: 'toggle', name: "angle optimize", id: "angleOptimize" },
+                    { type: 'toggle', name: "fast place", id: "fastPlace" }
                 ]
             },
             {
@@ -19414,6 +19632,12 @@ defense: [
                 title: "ACTIONS",
                 items: [
                     { type: 'toggle', name: "autobuy", id: "autoBuy" },
+                    { type: 'toggle', name: "autofarm", id: "autoFarm" },
+                    { type: 'slider', name: "farm radius", id: "farmRadius", min: 50, max: 500 },
+                    { type: 'toggle', name: "autoheal", id: "autoHeal" },
+                    { type: 'slider', name: "heal threshold", id: "healThreshold", min: 20, max: 100 },
+                    { type: 'toggle', name: "autoeat", id: "autoEat" },
+                    { type: 'select', name: "eat priority", id: "eatPriority", options: ["health", "food", "water"] }
                 ]
             }
         ],
@@ -19431,7 +19655,18 @@ defense: [
                 title: "Username Cycler",
                 items: [
                     { type: 'toggle', name: "cycle Usernames", id: "usernameCycler" },
-                    { type: 'input', name: "usernames (comma sep)", id: "usernameList" }
+                    { type: 'input', name: "usernames (comma sep)", id: "usernameList" },
+                    { type: 'toggle', name: "auto join party", id: "autoJoinParty" },
+                    { type: 'input', name: "clan tag", id: "clanTag" }
+                ]
+            },
+            {
+                title: "Notifications",
+                items: [
+                    { type: 'toggle', name: "stats tracker", id: "statsTracker" },
+                    { type: 'toggle', name: "sound enabled", id: "soundEnabled" },
+                    { type: 'toggle', name: "kill notification", id: "notificationKill" },
+                    { type: 'toggle', name: "death notification", id: "notificationDeath" }
                 ]
             }
         ],
@@ -19444,7 +19679,12 @@ defense: [
                     { type: 'toggle', name: "target line", id: "xTargetLine" },
                     { type: 'toggle', name: "enemy threat range", id: "xThreatRange" },
                     { type: 'toggle', name: "placement ghosts", id: "xPlacementPreview" },
-                    { type: 'toggle', name: "autobreak guide", id: "xBreakGuide" }
+                    { type: 'toggle', name: "autobreak guide", id: "xBreakGuide" },
+                    { type: 'toggle', name: "show health bars", id: "showHealthBars" },
+                    { type: 'toggle', name: "show names", id: "showNames" },
+                    { type: 'toggle', name: "show distances", id: "showDistances" },
+                    { type: 'toggle', name: "enhanced minimap", id: "minimapEnhanced" },
+                    { type: 'toggle', name: "fps counter", id: "fpsCounter" }
                 ]
             },
             {
@@ -19460,6 +19700,13 @@ defense: [
                 title: "Themes",
                 items: [
                     { type: 'theme_select', id: "theme" }
+                ]
+            },
+            {
+                title: "Menu Settings",
+                items: [
+                    { type: 'slider', name: "menu opacity", id: "menuOpacity", min: 50, max: 100 },
+                    { type: 'slider', name: "menu scale", id: "menuScale", min: 75, max: 125 }
                 ]
             }
         ]
@@ -19978,6 +20225,36 @@ defense: [
                     row.appendChild(btn);
                     itemsContainer.appendChild(row);
                 }
+                // SELECT DROPDOWN
+                else if (item.type === 'select') {
+                    const row = document.createElement('div');
+                    row.className = 'feature-row stacked';
+                    row.innerHTML = `<span class="feat-label">${item.name}</span>`;
+
+                    const wrap = document.createElement('div');
+                    wrap.className = 'input-wrapper';
+
+                    const select = document.createElement('select');
+                    select.className = 'text-input-styled';
+                    select.style.cursor = 'pointer';
+
+                    item.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.innerText = opt.charAt(0).toUpperCase() + opt.slice(1);
+                        if (window.vars[item.id] === opt) option.selected = true;
+                        select.appendChild(option);
+                    });
+
+                    select.onchange = (e) => {
+                        window.vars[item.id] = e.target.value;
+                        saveConfig();
+                    };
+
+                    wrap.appendChild(select);
+                    row.appendChild(wrap);
+                    itemsContainer.appendChild(row);
+                }
                 // THEME SELECT
                 else if (item.type === 'theme_select') {
                     const themes = [
@@ -20131,11 +20408,15 @@ document.addEventListener('click', handleSpawn, true);
         const preState = v.prePlace ? 'ON' : 'OFF';
         const defenseState = v.antiSmart ? 'SMART' : 'BASE';
         const killState = v.killChat ? 'ON' : 'OFF';
+        const farmState = v.autoFarm ? 'ON' : 'OFF';
+        const healState = v.autoHeal ? 'ON' : 'OFF';
+        const dodgeState = v.autoDodge ? 'ON' : 'OFF';
         const pingText = actualPing ? `${Math.round(actualPing)}ms` : '--ms';
 
         xBox.innerHTML = `<span class="x-title">X- PRECISION</span>  ${pingText}
-PLACE ${placeState}  PRE ${preState}
-DEF ${defenseState}  KILLCHAT ${killState}`;
+PLACE ${placeState}  PRE ${preState}  FARM ${farmState}
+DEF ${defenseState}  DODGE ${dodgeState}
+HEAL ${healState}  KILLCHAT ${killState}`;
     }, 250);
 })();
 })();
