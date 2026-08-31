@@ -1,146 +1,160 @@
 #!/usr/bin/env python3
-"""
-Merge Remendy visual customization into Main mod
-- Keep all Main mod combat/placement logic
-- Add Remendy's visual settings and UI customization
-- Fix FPS flickering with Remendy's smoother render loop
-- EXCLUDE: auto placer, healing, hat automation from Remendy
-"""
-
 import re
 
-# Read files
-with open('/workspace/Main mod.txt', 'r', encoding='utf-8') as f:
+# Read both files
+with open('/workspace/Main mod.txt', 'r') as f:
     main_mod = f.read()
 
-with open('/workspace/Remendy mod.txt', 'r', encoding='utf-8') as f:
+with open('/workspace/Remendy mod.txt', 'r') as f:
     remendy_mod = f.read()
 
-# Extract injectStyles function
-inject_styles_start = remendy_mod.find('globalThis.injectStyles = function() {')
-inject_styles_end = remendy_mod.find('globalThis.injectScrollbarStyles', inject_styles_start)
-inject_styles_func = remendy_mod[inject_styles_start:inject_styles_end].strip()
+# Extract Remendy components we need:
 
-# Extract toggleMenuChat function  
-toggle_menu_start = remendy_mod.find('globalThis.toggleMenuChat = function()')
-brace_count = 0
-toggle_menu_end = toggle_menu_start
-for i, char in enumerate(remendy_mod[toggle_menu_start:], toggle_menu_start):
-    if char == '{':
-        brace_count += 1
-    elif char == '}':
-        brace_count -= 1
-        if brace_count == 0:
-            toggle_menu_end = i + 1
-            break
-toggle_menu_func = remendy_mod[toggle_menu_start:toggle_menu_end]
+# 1. Extract configs object (lines 3119 to around 3280)
+configs_match = re.search(r'(globalThis\.configs = JSON\.parse\(localStorage\.getItem\("remedyConfig"\)\) \| \{[^}]+\};)', remendy_mod, re.DOTALL)
+if not configs_match:
+    # Try a different pattern for the configs
+    configs_start = remendy_mod.find('globalThis.configs = JSON.parse(localStorage.getItem("remedyConfig"))')
+    if configs_start != -1:
+        # Find the end of the configs object by counting braces
+        brace_count = 0
+        start_brace = remendy_mod.find('{', configs_start)
+        for i in range(start_brace, len(remendy_mod)):
+            if remendy_mod[i] == '{':
+                brace_count += 1
+            elif remendy_mod[i] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    configs_content = remendy_mod[configs_start:i+1]
+                    break
+    else:
+        configs_content = ""
+else:
+    configs_content = configs_match.group(1)
 
-# Extract configs object
-configs_start = remendy_mod.find('globalThis.configs = JSON.parse(localStorage.getItem("remedyConfig")) || {')
-configs_lines = []
-brace_count = 0
-in_configs = False
-for i, line in enumerate(remendy_mod[configs_start:].split('\n'), 0):
-    if not in_configs and 'globalThis.configs = JSON.parse' in line:
-        in_configs = True
-        brace_count = 1
-        configs_lines.append(line)
-    elif in_configs:
-        configs_lines.append(line)
-        brace_count += line.count('{') - line.count('}')
-        if brace_count <= 0:
-            break
-configs_full = '\n'.join(configs_lines)
+# 2. Extract getEl function
+getEl_match = re.search(r'(globalThis\.getEl = function\(id\) \{[^}]+\})', remendy_mod)
+getEl_func = getEl_match.group(1) if getEl_match else ""
 
-# Build merged settings (Main mod settings + Remendy visual configs)
-merged_settings = """// MERGED SETTINGS - Main mod core + Remendy visual customization
-let settings = {
-    botplatformplacer: false,
-    botcount: 40,
-    botname: "Helper",
-    gamezoom: 100,
-    x18ksync: true,
-    chatlog: false,
-    spampreplace: true,
-    autoPlace: true,
+# 3. Extract HtmlAction class
+htmlAction_start = remendy_mod.find('class HtmlAction {')
+if htmlAction_start != -1:
+    brace_count = 0
+    start_brace = remendy_mod.find('{', htmlAction_start)
+    for i in range(start_brace, len(remendy_mod)):
+        if remendy_mod[i] == '{':
+            brace_count += 1
+        elif remendy_mod[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                htmlAction_class = remendy_mod[htmlAction_start:i+1]
+                break
+else:
+    htmlAction_class = ""
 
-    // PERFORMANCE SETTINGS
-    uncapFPS: true,
-    showFPS: true,
-    lowPacketMode: false,
+# 4. Extract Html class
+html_start = remendy_mod.find('class Html {')
+if html_start != -1:
+    brace_count = 0
+    start_brace = remendy_mod.find('{', html_start)
+    for i in range(start_brace, len(remendy_mod)):
+        if remendy_mod[i] == '{':
+            brace_count += 1
+        elif remendy_mod[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                html_class = remendy_mod[html_start:i+1]
+                break
+else:
+    html_class = ""
 
-    // COMBAT SETTINGS
-    instaKey: 'r',
-    instaEnabled: false,
-    instaThreshold: 35,
+# 5. Extract menuDiv creation
+menuDiv_match = re.search(r'(globalThis\.menuDiv = document\.createElement\("div"\);[^;]+;)', remendy_mod)
+menuDiv_code = menuDiv_match.group(1) if menuDiv_match else ""
 
-    // MOVEMENT SETTINGS
-    smartMovement: true,
-    spikeAvoidance: true,
-    playerAvoidance: true,
-    avoidDistance: 150,
+# 6. Extract menuChatDiv creation  
+menuChatDiv_match = re.search(r'(globalThis\.menuChatDiv = document\.createElement\("div"\);[^;]+;)', remendy_mod)
+menuChatDiv_code = menuChatDiv_match.group(1) if menuChatDiv_match else ""
 
-    // PLACER SETTINGS
-    angleOptimize: true,
-    anglePrecision: 2.5,
+# 7. Extract toggleMenuChat function
+toggleMatch = re.search(r'(globalThis\.toggleMenuChat = function\(\) \{[^}]+\})', remendy_mod)
+toggleMenuChat_func = toggleMatch.group(1) if toggleMatch else ""
 
-    // REMENDY VISUAL CUSTOMIZATION SETTINGS (MERGED)
-    grayVis: true,
-    bigNames: false,
-    showGrid: true,
-    borders: true,
-    nightMode: true,
-    darkMode: true,
-    pinkUI: false,
-    bowTie: false,
-    texturePack: false,
+# 8. Extract injectStyles function
+inject_start = remendy_mod.find('globalThis.injectStyles = function() {')
+if inject_start != -1:
+    brace_count = 0
+    start_brace = remendy_mod.find('{', inject_start)
+    for i in range(start_brace, len(remendy_mod)):
+        if remendy_mod[i] == '{':
+            brace_count += 1
+        elif remendy_mod[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                injectStyles_func = remendy_mod[inject_start:i+1]
+                break
+else:
+    injectStyles_func = ""
+
+# Create the merged content
+# Find where to insert the Remendy components in Main mod - after the settings object
+settings_end = main_mod.find('let settings = {')
+if settings_end != -1:
+    # Find the end of settings object
+    brace_count = 0
+    start_brace = main_mod.find('{', settings_end)
+    for i in range(start_brace, len(main_mod)):
+        if main_mod[i] == '{':
+            brace_count += 1
+        elif main_mod[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                settings_end_pos = i + 1
+                break
     
-    // COLOR CUSTOMIZATION (from Remendy)
-    menuOpacity: 0.9,
-    menuColor: "#01000580",
-    mainColor: "#000105b3",
-    textColor: "#e8e8e8",
-    toggleColor: "#006fe6",
-    outlineColor: "#d6d6d6",
-    accentColor: "#fef1f1",
-    elementOpacity: 0.1,
-    themeColor: "#0c0132",
-};"""
+    # Insert Remendy components after settings
+    remendy_components = f'''
+// ========== REMENDY VISUAL CUSTOMIZATION (MERGED) ==========
+{getEl_func}
 
-# Find where to insert the merged settings in Main mod (replace original settings block)
-settings_pattern = r'let settings = \{[^}]+\};'
-main_mod_new = re.sub(settings_pattern, merged_settings, main_mod, count=1, flags=re.DOTALL)
+{configs_content.replace('globalThis.configs', 'globalThis.remedyConfigs')}
 
-# Find the doUpdate function and replace setTimeout with requestAnimationFrame for smoother FPS
-old_update_pattern = r"setTimeout\(\(\) => requestAnimationFrame\(doUpdate\), 16\.67\);"
-new_update_code = """// Use Remendy-style smooth render loop
-window.requestAnimationFrame(doUpdate);"""
-main_mod_new = re.sub(old_update_pattern, new_update_code, main_mod_new)
+{htmlAction_class}
 
-# Find a good place to inject the Remendy functions (before webpack bootstrap or after globals)
-# Insert after the global variables section
-insert_marker = "let packetQueue = [];"
-insert_pos = main_mod_new.find(insert_marker)
-if insert_pos != -1:
-    insert_pos = main_mod_new.find('\n', insert_pos + len(insert_marker))
-    injection_code = f"""
-// ===== REMENDY VISUAL CUSTOMIZATION (MERGED) =====
-{configs_full}
+{html_class}
 
-{inject_styles_func}
+globalThis.HTML = new Html();
 
-{toggle_menu_func}
+{menuDiv_code.replace('globalThis.menuDiv', 'globalThis.menuDiv')}
+HTML.set("menuDiv");
 
-// ===== END REMENDY VISUAL CUSTOMIZATION =====
-"""
-    main_mod_new = main_mod_new[:insert_pos] + injection_code + main_mod_new[insert_pos:]
+{menuChatDiv_code.replace('globalThis.menuChatDiv', 'globalThis.menuChatDiv')}
+HTML.set("menuChatDiv");
 
-# Write the merged mod
-with open('/workspace/Merged_Complete_Mod.txt', 'w', encoding='utf-8') as f:
-    f.write(main_mod_new)
+globalThis.menuChatBox = getEl("mChBox");
 
-print(f"Merged mod created successfully!")
-print(f"Total length: {len(main_mod_new)} characters")
-print(f"Added injectStyles: {len(inject_styles_func)} chars")
-print(f"Added toggleMenuChat: {len(toggle_menu_func)} chars")
-print(f"Added configs: {len(configs_full)} chars")
+{toggleMenuChat_func.replace('globalThis.toggleMenuChat', 'globalThis.toggleMenuChat')}
+
+{injectStyles_func.replace('globalThis.injectStyles', 'globalThis.injectStyles')}
+
+// Apply styles on load
+if (typeof globalThis.injectStyles === 'function') {{
+    globalThis.injectStyles();
+}}
+// ===========================================================
+
+'''
+    merged_mod = main_mod[:settings_end_pos] + remendy_components + main_mod[settings_end_pos:]
+else:
+    merged_mod = main_mod
+
+# Fix the flickering issue
+merged_mod = merged_mod.replace('setTimeout(() => requestAnimationFrame(doUpdate), 16.67);', 'requestAnimationFrame(doUpdate);')
+
+# Write the merged file
+with open('/workspace/FINAL_WORKING_MERGED.txt', 'w') as f:
+    f.write(merged_mod)
+
+print("Merge complete!")
+print(f"Original Main mod size: {len(main_mod)} chars")
+print(f"Merged mod size: {len(merged_mod)} chars")
