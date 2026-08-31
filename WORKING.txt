@@ -8975,9 +8975,7 @@ let lastPacketTime = 0;
 
 
             // MOUSE INPUT:
-            const mals = document.getElementById('touch-controls-fullscreen');
-            mals.style.display = 'block';
-            mals.addEventListener("mousemove", gameInput, false);
+            gameCanvas.addEventListener("mousemove", gameInput, false);
             function gameInput(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -8986,7 +8984,7 @@ let lastPacketTime = 0;
                 mouseY = e.clientY;
             }
 
-            mals.addEventListener("mousedown", mouseDown, false);
+            gameCanvas.addEventListener("mousedown", mouseDown, false);
             function mouseDown(e) {
                 e.preventDefault();
                 setUsingTouch(false);
@@ -8998,7 +8996,7 @@ let lastPacketTime = 0;
                 }
             }
 
-            mals.addEventListener("mouseup", mouseUp, false);
+            gameCanvas.addEventListener("mouseup", mouseUp, false);
             function mouseUp(e) {
                 e.preventDefault();
                 setUsingTouch(false);
@@ -9011,7 +9009,7 @@ let lastPacketTime = 0;
             }
 
             // Prevent context menu on right click
-            mals.addEventListener("contextmenu", (e) => {
+            gameCanvas.addEventListener("contextmenu", (e) => {
                 e.preventDefault();
             }, false);
 
