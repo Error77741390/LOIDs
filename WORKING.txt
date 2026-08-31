@@ -8051,32 +8051,32 @@ let lastPacketTime = 0;
             var didLoad = false;
             var captchaReady = false;
 
-            // START AUTOCAPTCHA
-            let whereverifybutton = document.querySelector("#altcha_checkbox");
-
-            function isAltchaLoading() {
-                let altchaFrame = document.querySelector("#altcha_iframe");
-                if (!altchaFrame) {
-                    return false;
-                }
-                return altchaFrame.classList.contains("loading") || altchaFrame.style.display === "none";
-            }
-
-            let altchaInterval = setInterval(() => {
-                if (isAltchaLoading()) {
-                    if (menuCardHolder) {
-                        menuCardHolder.style.display = "none";
-                    }
-                } else {
-                    if (menuCardHolder) {
-                        menuCardHolder.style.display = "";
-                    }
-                    if (whereverifybutton) {
-                        whereverifybutton.click();
-                    }
-                    clearInterval(altchaInterval);
-                }
-            }, 1);
+            // START AUTOCAPTCHA - DISABLED TO FIX FLICKERING
+            // let whereverifybutton = document.querySelector("#altcha_checkbox");
+            // 
+            // function isAltchaLoading() {
+            //     let altchaFrame = document.querySelector("#altcha_iframe");
+            //     if (!altchaFrame) {
+            //         return false;
+            //     }
+            //     return altchaFrame.classList.contains("loading") || altchaFrame.style.display === "none";
+            // }
+            // 
+            // let altchaInterval = setInterval(() => {
+            //     if (isAltchaLoading()) {
+            //         if (menuCardHolder) {
+            //             menuCardHolder.style.display = "none";
+            //         }
+            //     } else {
+            //         if (menuCardHolder) {
+            //             menuCardHolder.style.display = "";
+            //         }
+            //         if (whereverifybutton) {
+            //             whereverifybutton.click();
+            //         }
+            //         clearInterval(altchaInterval);
+            //     }
+            // }, 1);
             // END AUTOCAPTCHA
 
             window.onblur = function () {
