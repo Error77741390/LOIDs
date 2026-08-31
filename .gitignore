@@ -1,62 +1,34 @@
 ```
-# Compiled and build artifacts
+# Temporary files
+*.tmp
+TEMP_*
+FINAL_*
+
+# Build artifacts
+build/
+
+# Python
 *.pyc
 __pycache__/
+*.pyo
+*.pyd
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
-*.swp
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Python specific
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Backup files
-*.bak
-*~
-```
-
-Wait, let me reconsider the input more carefully:
-
-The added files are: ['FINAL_MERGED_MOD.txt', 'MERGE_COMPLETE_README.md', 'Merged_Complete_Mod_FIXED.txt', 'fix_fps_flicker.py', 'fix_merged_mod.py']
-
-These are all source/config files (.txt, .md, .py) - no build artifacts, dependencies, or temp files are present in the changes.
-
-According to rule #6: "If the list of file changes contains ONLY source or config files... and NO build artifacts, dependencies, or temp files — output an EMPTY .gitignore"
-
-Since only source/config files are present, the output should be empty.
-
-```(empty)
+# Dependencies
+node_modules/
+.venv/
+venv/
 ```
