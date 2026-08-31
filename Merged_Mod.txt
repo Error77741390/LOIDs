@@ -1,0 +1,149 @@
+// ==UserScript==
+// @name         X- Precision Client - Remendy Visuals
+// @author       X- (precision build based on Luna/Skye/Zenith/XTRFY base) + Remendy visuals by Shirone
+// @description  X- precision combat, defense, placement and visual build with Remendy UI customization
+// @version      3.0 X- Remendy Visuals
+// @match        *://*.moomoo.io/*
+// @grant        none
+// ==/UserScript==
+
+/*interesting tuff script*/
+
+
+
+let songActive = false;
+let songIndex = 0;
+let songTimer = null;
+
+const songLyrics = [
+    "X- is the best",
+    "X- precision",
+    "X- owns this",
+    "X- is the best",
+    "X- precision diff",
+    "X- is the best",
+    "X- locked in",
+    "X- is the best"
+];
+// Note: I shortened some lines to stay under the 20-character limit
+let wsAddress;
+let pathBreak = true;
+let grindObjects = [];
+let prevKills = 0;
+let path = null;
+let autoaimAngle = null;
+let autogathering = false;
+let currentHat = 0;
+let imTrapped = false;
+let shouldResetShame = false;
+let totalDmgPot = 0;
+let lastcolliding = false;
+let spikeTickAnti = false;
+let grindAngle = null;
+let smartTickObject = null;
+let iWasTrapped = false;
+let lastPredicted = false;
+let gatherGrind = false;
+let lastPosX = 0;
+let lastPosY = 0;
+let canStillGather = false;
+let autoBreakWeapon = null;
+let spikes_our = [];
+let traps_our = [];
+let enemy_lastcollidngspike = false;
+let enemy_collidingspike = false;
+let placedAngles = [];
+let bannedAngles = new Map();
+let smartTickSpike = null;
+let gPressed = false;
+let turrets_our = null;
+let pathPosition = null;
+let pathMode = {
+    avoidEnemySpikes: false,
+    avoidEnemy: false,
+}
+let filteredObjectsCache = {
+    tick: -1,
+    withSpikes: null,
+    withoutSpikes: null,
+};
+let xOffset = null;
+let yOffset = null;
+let shouldntPathfind = false;
+
+
+
+
+
+// X- precision tuning: preserves the original decision logic, but samples
+// finer angles and uses tighter de-duplication for cleaner actions.
+const X_PRECISION = {
+    placeSteps: 144,        // 2.5 degree placement scan
+    prePlaceSteps: 144,
+    breakSteps: 180,        // 2 degree autobreak scan
+    angleDedupe: Math.PI / 120, // 1.5 degrees
+    visualMaxGhosts: 12
+};
+
+let settings = {
+    botplatformplacer: false,
+    botcount: 40,
+    botname: "Helper",
+    gamezoom: 100,
+    x18ksync: true,
+    chatlog: false,
+    spampreplace: true,
+    autoPlace: true,
+
+    // PERFORMANCE SETTINGS
+    showFPS: true,
+
+    // COMBAT SETTINGS
+    instaKey: 'r',
+    instaEnabled: false,
+    instaThreshold: 35,
+
+    // MOVEMENT SETTINGS
+    smartMovement: true,
+    spikeAvoidance: true,
+    playerAvoidance: true,
+    avoidDistance: 150,
+
+    // PLACER SETTINGS
+    angleOptimize: true,
+    anglePrecision: 2.5,
+};
+
+const autoBuyList = [
+
+    { id: 15, type: 0, cost: 600 },    // winter
+    { id: 31, type: 0, cost: 2500 },   // flipper
+    { id: 6, type: 0, cost: 4000 },   // soldier
+    { id: 40, type: 0, cost: 15000 },  // tank
+    { id: 7, type: 0, cost: 6000 },   // bull
+    { id: 53, type: 0, cost: 10000 },  // turret
+    { id: 13, type: 1, cost: 15000 },   // angel
+    { id: 48, type: 0, cost: 3000 },  //halo
+    { id: 19, type: 1, cost: 15000 },   // shadow
+];
+
+
+
+let packets = 0;
+let packetInterval;
+let pps = 0;
+
+// FPS COUNTER VARIABLES
+let fpsStartTime = performance.now();
+let fpsFrameCount = 0;
+let currentFPS = 0;
+let lastFPSUpdate = 0;
+let instaTarget = null;
+let instaTargetPos = null;
+let nearbyEnemies = [];
+let spikePositions = [];
+let playerPositions = [];
+let packetQueue = [];
+let lastPacketTime = 0;
+
+
