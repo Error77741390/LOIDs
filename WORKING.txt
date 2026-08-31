@@ -67,8 +67,6 @@ let filteredObjectsCache = {
     withSpikes: null,
     withoutSpikes: null,
 };
-let xOffset = null;
-let yOffset = null;
 let shouldntPathfind = false;
 
 
@@ -9606,8 +9604,8 @@ function sendLockDir() {
                     }
 
                     // RENDER CORDS:
-                    xOffset = camX - (maxScreenWidth / 2);
-                    yOffset = camY - (maxScreenHeight / 2);
+                    let xOffset = camX - (maxScreenWidth / 2);
+                    let yOffset = camY - (maxScreenHeight / 2);
 
                     // RENDER BACKGROUND:
                     if (config.snowBiomeTop - yOffset <= 0 && config.mapScale - config.snowBiomeTop - yOffset >= maxScreenHeight) {
