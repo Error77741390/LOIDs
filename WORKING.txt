@@ -10115,7 +10115,8 @@ if (tmpObj.isPlayer && tmpObj.alive) {
                 }
 
                 // Draw once on the main player layer to avoid duplicate overlays.
-                if (zIndex === 0) renderXPrecisionVisuals(xOffset, yOffset);
+                // X- Precision visuals disabled to fix stationary overlay issue
+                // if (zIndex === 0) renderXPrecisionVisuals(xOffset, yOffset);
             }
 
             // X- PRECISION VISUALS:
@@ -19496,11 +19497,11 @@ function runSongLoop() {
         // Visuals
         millRotation: false,
         spikeRotation: false,
-        xCombatVisuals: true,
-        xTargetLine: true,
-        xThreatRange: true,
-        xPlacementPreview: true,
-        xBreakGuide: true,
+        xCombatVisuals: false,
+        xTargetLine: false,
+        xThreatRange: false,
+        xPlacementPreview: false,
+        xBreakGuide: false,
         showHealthBars: true,
         showNames: true,
         showDistances: true,
@@ -19674,11 +19675,6 @@ function runSongLoop() {
             {
                 title: "X- Precision HUD",
                 items: [
-                    { type: 'toggle', name: "combat overlays", id: "xCombatVisuals" },
-                    { type: 'toggle', name: "target line", id: "xTargetLine" },
-                    { type: 'toggle', name: "enemy threat range", id: "xThreatRange" },
-                    { type: 'toggle', name: "placement ghosts", id: "xPlacementPreview" },
-                    { type: 'toggle', name: "autobreak guide", id: "xBreakGuide" },
                     { type: 'toggle', name: "show health bars", id: "showHealthBars" },
                     { type: 'toggle', name: "show names", id: "showNames" },
                     { type: 'toggle', name: "show distances", id: "showDistances" },
