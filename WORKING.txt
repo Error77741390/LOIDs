@@ -15401,7 +15401,7 @@ function runSongLoop() {
                 lastUpdate = now;
                 
                 // FPS COUNTER LOGIC
-                if (settings.showFPS || settings.uncapFPS) {
+                if (settings.showFPS) {
                     fpsFrameCount++;
                     if (now - lastFPSUpdate >= 1000) {
                         currentFPS = fpsFrameCount;
@@ -15412,13 +15412,8 @@ function runSongLoop() {
                 
                 updateGame();
                 
-                // UNCAPPED FPS MODE
-                if (settings.uncapFPS) {
-                    requestAnimationFrame(doUpdate);
-                } else {
-                    // Standard 60 FPS cap fallback
-                    setTimeout(() => requestAnimationFrame(doUpdate), 16.67);
-                }
+                // Always use capped FPS to prevent flickering
+                setTimeout(() => requestAnimationFrame(doUpdate), 16.67);
             }
 
             // START GAME:
