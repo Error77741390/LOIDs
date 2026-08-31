@@ -8051,32 +8051,32 @@ let lastPacketTime = 0;
             var didLoad = false;
             var captchaReady = false;
 
-            // START AUTOCAPTCHA
-            let whereverifybutton = document.querySelector("#altcha_checkbox");
-
-            function isAltchaLoading() {
-                let altchaFrame = document.querySelector("#altcha_iframe");
-                if (!altchaFrame) {
-                    return false;
-                }
-                return altchaFrame.classList.contains("loading") || altchaFrame.style.display === "none";
-            }
-
-            let altchaInterval = setInterval(() => {
-                if (isAltchaLoading()) {
-                    if (menuCardHolder) {
-                        menuCardHolder.style.display = "none";
-                    }
-                } else {
-                    if (menuCardHolder) {
-                        menuCardHolder.style.display = "";
-                    }
-                    if (whereverifybutton) {
-                        whereverifybutton.click();
-                    }
-                    clearInterval(altchaInterval);
-                }
-            }, 1);
+            // START AUTOCAPTCHA - DISABLED TO FIX FLICKERING
+            // let whereverifybutton = document.querySelector("#altcha_checkbox");
+            // 
+            // function isAltchaLoading() {
+            //     let altchaFrame = document.querySelector("#altcha_iframe");
+            //     if (!altchaFrame) {
+            //         return false;
+            //     }
+            //     return altchaFrame.classList.contains("loading") || altchaFrame.style.display === "none";
+            // }
+            // 
+            // let altchaInterval = setInterval(() => {
+            //     if (isAltchaLoading()) {
+            //         if (menuCardHolder) {
+            //             menuCardHolder.style.display = "none";
+            //         }
+            //     } else {
+            //         if (menuCardHolder) {
+            //             menuCardHolder.style.display = "";
+            //         }
+            //         if (whereverifybutton) {
+            //             whereverifybutton.click();
+            //         }
+            //         clearInterval(altchaInterval);
+            //     }
+            // }, 1);
             // END AUTOCAPTCHA
 
             window.onblur = function () {
@@ -8975,9 +8975,7 @@ let lastPacketTime = 0;
 
 
             // MOUSE INPUT:
-            const mals = document.getElementById('touch-controls-fullscreen');
-            mals.style.display = 'block';
-            mals.addEventListener("mousemove", gameInput, false);
+            gameCanvas.addEventListener("mousemove", gameInput, false);
             function gameInput(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -8986,7 +8984,7 @@ let lastPacketTime = 0;
                 mouseY = e.clientY;
             }
 
-            mals.addEventListener("mousedown", mouseDown, false);
+            gameCanvas.addEventListener("mousedown", mouseDown, false);
             function mouseDown(e) {
                 e.preventDefault();
                 setUsingTouch(false);
@@ -8998,7 +8996,7 @@ let lastPacketTime = 0;
                 }
             }
 
-            mals.addEventListener("mouseup", mouseUp, false);
+            gameCanvas.addEventListener("mouseup", mouseUp, false);
             function mouseUp(e) {
                 e.preventDefault();
                 setUsingTouch(false);
@@ -9011,7 +9009,7 @@ let lastPacketTime = 0;
             }
 
             // Prevent context menu on right click
-            mals.addEventListener("contextmenu", (e) => {
+            gameCanvas.addEventListener("contextmenu", (e) => {
                 e.preventDefault();
             }, false);
 
@@ -15403,7 +15401,7 @@ function runSongLoop() {
                 lastUpdate = now;
                 
                 // FPS COUNTER LOGIC
-                if (settings.showFPS || settings.uncapFPS) {
+                if (settings.showFPS) {
                     fpsFrameCount++;
                     if (now - lastFPSUpdate >= 1000) {
                         currentFPS = fpsFrameCount;
@@ -15414,13 +15412,8 @@ function runSongLoop() {
                 
                 updateGame();
                 
-                // UNCAPPED FPS MODE
-                if (settings.uncapFPS) {
-                    requestAnimationFrame(doUpdate);
-                } else {
-                    // Standard 60 FPS cap fallback
-                    setTimeout(() => requestAnimationFrame(doUpdate), 16.67);
-                }
+                // Always use capped FPS to prevent flickering
+                setTimeout(() => requestAnimationFrame(doUpdate), 16.67);
             }
 
             // START GAME:
